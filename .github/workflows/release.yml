@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write  # 👈 Cho phép ghi release (bắt buộc cho action-gh-release)
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
