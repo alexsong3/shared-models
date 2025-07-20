@@ -1,0 +1,23 @@
+# CI để build + release
+
+name: Publish crate
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Package crate
+        run: cargo package
+
+      - name: Upload .crate file to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/package/*.crate
