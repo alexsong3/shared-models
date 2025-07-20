@@ -1,7 +1,7 @@
 # shared-models
 Publish mẫu
 
--- Bước thực hiện:
+--------- Các bước thực hiện:
 
 cd shared-models
 
