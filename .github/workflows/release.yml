@@ -1,24 +1,64 @@
-name: Publish crate
+# name: Publish crate
+# on:
+#   push:
+#     tags:
+#       - 'v*'
+
+# permissions:
+#   contents: write  # 👈 Cho phép ghi release (bắt buộc cho action-gh-release)
+
+# jobs:
+#   build-and-release:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v3
+
+#       - name: Package crate
+#         run: cargo package
+
+#       - name: Upload .crate file to GitHub Release
+#         uses: softprops/action-gh-release@v1
+#         with:
+#           files: |
+#             target/package/*.crate
+
+
+name: Release Crate
 
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
-  contents: write  # 👈 Cho phép ghi release (bắt buộc cho action-gh-release)
+  contents: write  # Để tạo GitHub Release
 
 jobs:
-  build-and-release:
+  publish:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: moonrepo/setup-rust@v1
+        with:
+          version: stable
 
       - name: Package crate
         run: cargo package
 
-      - name: Upload .crate file to GitHub Release
+      - name: Upload .crate to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             target/package/*.crate
+
+      - name: Clone crates-index
+        run: |
+          git clone https://github.com/alexsong3/crates-index index
+          cp target/package/*.crate index/.crate-cache/
+          cargo publish --registry shared --allow-dirty --no-verify
+        env:
+          CARGO_REGISTRIES_SHARED_INDEX: https://github.com/alexsong3/crates-index

@@ -1,0 +1,3 @@
+[registries.shared]
+index = "https://github.com/alexsong3/crates-index"
+# index = "ssh://git@github.com/alexsong3/crates-index"
