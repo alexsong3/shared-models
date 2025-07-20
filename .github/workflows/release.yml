@@ -1,5 +1,3 @@
-# CI để build + release
-
 name: Publish crate
 
 on:
