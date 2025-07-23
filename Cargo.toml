@@ -1,10 +1,10 @@
 [package]
 name = "shared-models"
-version = "0.1.0"
-edition = "2024"
-description = "Shared models for microservices"
-license = "MIT"
-repository = "https://github.com/alexsong3/shared-models"
+version = "0.1.1"
+edition = "2021"
+# description = "Shared models for microservices"
+# license = "MIT"
+# repository = "https://github.com/alexsong3/shared-models"
 
 [dependencies]
 chrono = { version = "0.4.40", features = ["serde"] }
