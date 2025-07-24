@@ -22,7 +22,8 @@ jobs:
       - name: Build crate (optional but useful)
         run: cargo build
 
-      - name: Package crate
+      - name: Package shared-models crate
+        working-directory: ./shared-models
         run: cargo package
 
       - name: Upload .crate file to GitHub Release
