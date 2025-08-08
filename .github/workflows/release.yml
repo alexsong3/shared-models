@@ -20,10 +20,10 @@ jobs:
           override: true
           
       - name: Build crate (optional but useful)
-        run: cargo build --manifest-path shared-models/Cargo.toml
+        run: cargo build
 
       - name: Package crate
-        run: cargo package --manifest-path shared-models/Cargo.toml
+        run: cargo package
 
       - name: Upload .crate file to GitHub Release
         uses: softprops/action-gh-release@v1
