@@ -61,23 +61,65 @@ jobs:
       - name: Install cargo-index
         run: cargo install cargo-index
 
-      - name: Update crates-index
+      - name: Update crates-index (manual)
+        env:
+          CRATE_INDEX_TOKEN: ${{ secrets.CRATE_INDEX_TOKEN }}
         run: |
+          set -euo pipefail
+
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
           CRATE_NAME=$(grep '^name' Cargo.toml | head -n1 | cut -d '"' -f2)
           CRATE_URL="https://github.com/${{ github.repository }}/releases/download/v$TAG_VERSION/${CRATE_NAME}-$TAG_VERSION.crate"
 
-          # Clone crates-index
-          git clone https://x-access-token:${{ secrets.CRATE_INDEX_TOKEN }}@github.com/alexsong3/crates-index.git
+          echo "Updating index for $CRATE_NAME v$TAG_VERSION -> $CRATE_URL"
+
+          # Clone index (use token with push rights)
+          git clone https://x-access-token:${CRATE_INDEX_TOKEN}@github.com/alexsong3/crates-index.git
           cd crates-index
 
-          # Update index entry
-          CKSUM=$(sha256sum ../target/package/${CRATE_NAME}-${TAG_VERSION}.crate | cut -d ' ' -f1)
-          cargo-index add ./crates-index "$CRATE_NAME" "$TAG_VERSION" "$CRATE_URL" --checksum "$CKSUM"
+          # compute index path using crates.io-style layout
+          name="$CRATE_NAME"
+          len=${#name}
+          if [ "$len" -eq 1 ]; then
+            idx_path="1/$name"
+          elif [ "$len" -eq 2 ]; then
+            idx_path="2/$name"
+          elif [ "$len" -eq 3 ]; then
+            prefix=${name:0:1}
+            idx_path="3/$prefix/$name"
+          else
+            a=${name:0:2}
+            b=${name:2:4}
+            idx_path="$a/$b/$name"
+          fi
 
+          mkdir -p "$(dirname "$idx_path")"
+
+          # compute checksum of the .crate
+          CKSUM=$(sha256sum ../target/package/${CRATE_NAME}-${TAG_VERSION}.crate | awk '{print $1}')
+          echo "checksum: $CKSUM"
+
+          # Build minimal index entry JSON (single-line) and append it
+          # Note: deps is empty here; if you need accurate deps, we can parse Cargo.toml/Cargo.lock to populate it.
+          python3 - <<PY > /tmp/crate_entry.json
+            import json
+            entry = {
+              "name": "$CRATE_NAME",
+              "vers": "$TAG_VERSION",
+              "deps": [],
+              "cksum": "$CKSUM",
+              "features": {},
+              "yanked": False
+            }
+            print(json.dumps(entry, separators=(',',':')))
+            PY
+
+          # Append entry (one JSON object per line) — create file if missing
+          printf "%s\n" "$(cat /tmp/crate_entry.json)" >> "$idx_path"
+
+          git add "$idx_path"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "Update $CRATE_NAME to v$TAG_VERSION"
+          git commit -m "Update $CRATE_NAME to v$TAG_VERSION"
           git push origin main
-        env:
-          CRATE_INDEX_TOKEN: ${{ secrets.CRATE_INDEX_TOKEN }}
+        shell: bash
