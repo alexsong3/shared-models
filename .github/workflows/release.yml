@@ -50,7 +50,7 @@ jobs:
           cd crates-index
 
           # Update index entry
-          cargo install --locked cargo-edit
+          cargo install cargo-index
           cargo index add "$CRATE_NAME" --version "$TAG_VERSION" --registry "$CRATE_URL"
 
           git config user.name "github-actions[bot]"
