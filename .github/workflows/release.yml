@@ -3,7 +3,7 @@ name: Release Crate
 on:
   push:
     tags:
-      - 'v*' # Tự chạy khi có tag dạng v0.1.1
+      - 'v*' # Tự chạy khi có tag dạng v0.1.*
 
 permissions:
   contents: write
