@@ -17,6 +17,15 @@ jobs:
         with:
           fetch-depth: 0 # để đảm bảo lấy đầy đủ commit và tag
 
+      - name: Cache Cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
@@ -29,6 +38,16 @@ jobs:
             exit 1
           fi
 
+      - name: Verify dependencies
+        run: |
+          if ! grep -q 'serde' Cargo.toml || ! grep -q 'chrono' Cargo.toml; then
+            echo "❌ Missing required dependencies (serde or chrono)"
+            exit 1
+          fi
+
+      - name: Dry run publish
+        run: cargo publish --dry-run
+
       - name: Build crate package
         run: cargo package
 
@@ -39,19 +58,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install cargo-index
+        run: cargo install cargo-index
+
       - name: Update crates-index
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
           CRATE_NAME=$(grep '^name' Cargo.toml | head -n1 | cut -d '"' -f2)
           CRATE_URL="https://github.com/${{ github.repository }}/releases/download/v$TAG_VERSION/${CRATE_NAME}-$TAG_VERSION.crate"
-          
+
           # Clone crates-index
           git clone https://x-access-token:${{ secrets.CRATE_INDEX_TOKEN }}@github.com/alexsong3/crates-index.git
           cd crates-index
 
           # Update index entry
-          cargo install cargo-index
-          cargo index add "$CRATE_NAME" --version "$TAG_VERSION" --registry "$CRATE_URL"
+          CKSUM=$(sha256sum ../target/package/${CRATE_NAME}-${TAG_VERSION}.crate | cut -d ' ' -f1)
+          cargo index add \
+            --index ./crates-index \
+            --index-url https://github.com/${{ github.repository }}/releases/download/v${TAG_VERSION} \
+            "$CRATE_NAME" "$TAG_VERSION" "$CRATE_URL" --checksum "$CKSUM"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
