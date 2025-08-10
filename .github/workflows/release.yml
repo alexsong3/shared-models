@@ -1,32 +1,59 @@
-name: Publish crate
+name: Release Crate
+
 on:
   push:
     tags:
-      - 'v*'
-
-permissions:
-  contents: write  # 👈 Cho phép ghi release (bắt buộc cho action-gh-release)
+      - 'v*' # Tự chạy khi có tag dạng v0.1.1
 
 jobs:
-  build-and-release:
+  publish-crate:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          toolchain: stable
-          override: true
-          
-      - name: Build crate (optional but useful)
-        run: cargo build
+          fetch-depth: 0 # để đảm bảo lấy đầy đủ commit và tag
 
-      - name: Package crate
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify tag matches Cargo.toml version
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -n1 | cut -d '"' -f2)
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "❌ Tag version ($TAG_VERSION) không khớp với Cargo.toml ($CARGO_VERSION)"
+            exit 1
+          fi
+
+      - name: Build crate package
         run: cargo package
 
-      - name: Upload .crate file to GitHub Release
+      - name: Upload crate to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            target/package/*.crate
+          files: target/package/*.crate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update crates-index
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          CRATE_NAME=$(grep '^name' Cargo.toml | head -n1 | cut -d '"' -f2)
+          CRATE_URL="https://github.com/${{ github.repository }}/releases/download/v$TAG_VERSION/${CRATE_NAME}-$TAG_VERSION.crate"
+          
+          # Clone crates-index
+          git clone https://x-access-token:${{ secrets.CRATE_INDEX_TOKEN }}@github.com/alexsong3/crates-index.git
+          cd crates-index
+
+          # Update index entry
+          cargo install --locked cargo-edit
+          cargo index add "$CRATE_NAME" --version "$TAG_VERSION" --registry "$CRATE_URL"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update $CRATE_NAME to v$TAG_VERSION"
+          git push origin main
+        env:
+          CRATE_INDEX_TOKEN: ${{ secrets.CRATE_INDEX_TOKEN }}

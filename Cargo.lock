@@ -1237,7 +1237,7 @@ dependencies = [
 
 [[package]]
 name = "shared-models"
-version = "0.1.0"
+version = "0.1.5"
 dependencies = [
  "chrono",
  "serde",

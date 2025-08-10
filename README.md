@@ -25,3 +25,37 @@ Sau đó vào GitHub:
     git push origin main --tags
 
 => GitHub Action sẽ tự upload .crate → các service dùng được version mới ngay.
+
+
+name: Publish crate
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # 👈 Cho phép ghi release (bắt buộc cho action-gh-release)
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          
+      - name: Build crate (optional but useful)
+        run: cargo build
+
+      - name: Package crate
+        run: cargo package
+
+      - name: Upload .crate file to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/package/*.crate

@@ -1,3 +1,4 @@
 [registries.shared]
 index = "https://github.com/alexsong3/crates-index"
 # index = "ssh://git@github.com/alexsong3/crates-index"
+# https://github.com/alexsong3/shared-models/releases/download/v0.1.0/shared-models-0.1.0.crate
