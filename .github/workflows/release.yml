@@ -73,10 +73,7 @@ jobs:
 
           # Update index entry
           CKSUM=$(sha256sum ../target/package/${CRATE_NAME}-${TAG_VERSION}.crate | cut -d ' ' -f1)
-          cargo index add \
-            --index ./crates-index \
-            --index-url https://github.com/${{ github.repository }}/releases/download/v${TAG_VERSION} \
-            "$CRATE_NAME" "$TAG_VERSION" "$CRATE_URL" --checksum "$CKSUM"
+          cargo-index add ./crates-index "$CRATE_NAME" "$TAG_VERSION" "$CRATE_URL" --checksum "$CKSUM"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
