@@ -51,16 +51,6 @@ jobs:
       - name: Build crate package
         run: cargo package
 
-      - name: Upload crate to GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: target/package/*.crate
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install cargo-index
-        run: cargo install cargo-index
-
       - name: Update crates-index (manual)
         env:
           CRATE_INDEX_TOKEN: ${{ secrets.CRATE_INDEX_TOKEN }}
@@ -76,6 +66,9 @@ jobs:
           # Clone index (use token with push rights)
           git clone https://x-access-token:${CRATE_INDEX_TOKEN}@github.com/alexsong3/crates-index.git
           cd crates-index
+
+          # Ensure remote origin contains token for authenticated push
+          git remote set-url origin "https://x-access-token:${CRATE_INDEX_TOKEN}@github.com/alexsong3/crates-index.git"
 
           # compute index path using crates.io-style layout
           name="$CRATE_NAME"
@@ -99,27 +92,28 @@ jobs:
           CKSUM=$(sha256sum ../target/package/${CRATE_NAME}-${TAG_VERSION}.crate | awk '{print $1}')
           echo "checksum: $CKSUM"
 
-          # Build minimal index entry JSON (single-line) and append it
-          # Note: deps is empty here; if you need accurate deps, we can parse Cargo.toml/Cargo.lock to populate it.
+          # generate JSON entry
           python3 - <<PY > /tmp/crate_entry.json
-          import json
-          entry = {
-            "name": "$CRATE_NAME",
-            "vers": "$TAG_VERSION",
-            "deps": [],
-            "cksum": "$CKSUM",
-            "features": {},
-            "yanked": False
-          }
-          print(json.dumps(entry, separators=(',',':')))
-          PY
+            import json
+            entry = {
+              "name": "$CRATE_NAME",
+              "vers": "$TAG_VERSION",
+              "deps": [],
+              "cksum": "$CKSUM",
+              "features": {},
+              "yanked": False
+            }
+            print(json.dumps(entry, separators=(',',':')))
+            PY
 
-          # Append entry (one JSON object per line) — create file if missing
+          # append the entry as one line (create file if missing)
           printf "%s\n" "$(cat /tmp/crate_entry.json)" >> "$idx_path"
 
           git add "$idx_path"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # commit & push using origin which contains token
           git commit -m "Update $CRATE_NAME to v$TAG_VERSION"
           git push origin main
         shell: bash
